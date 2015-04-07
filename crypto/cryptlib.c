@@ -653,22 +653,11 @@ const char *CRYPTO_get_lock_name(int type)
         defined(__x86_64) || defined(__x86_64__) || \
         defined(_M_AMD64) || defined(_M_X64)
 
-extern unsigned int OPENSSL_ia32cap_P[4];
+unsigned int OPENSSL_ia32cap_P[4] = {0};
 unsigned long *OPENSSL_ia32cap_loc(void)
 {
-    if (sizeof(long) == 4)
-        /*
-         * If 32-bit application pulls address of OPENSSL_ia32cap_P[0]
-         * clear second element to maintain the illusion that vector
-         * is 32-bit.
-         */
-        OPENSSL_ia32cap_P[1] = 0;
-
-    OPENSSL_ia32cap_P[2] = 0;
-
-    return (unsigned long *)OPENSSL_ia32cap_P;
+    return (unsigned long*)OPENSSL_ia32cap_P;
 }
-
 # if defined(OPENSSL_CPUID_OBJ) && !defined(OPENSSL_NO_ASM) && !defined(I386_ONLY)
 #  define OPENSSL_CPUID_SETUP
 #  if defined(_WIN32)
@@ -723,16 +712,13 @@ void OPENSSL_cpuid_setup(void)
     OPENSSL_ia32cap_P[0] = (unsigned int)vec | (1 << 10);
     OPENSSL_ia32cap_P[1] = (unsigned int)(vec >> 32);
 }
-# else
-unsigned int OPENSSL_ia32cap_P[4];
 # endif
-
-#else
+# else
 unsigned long *OPENSSL_ia32cap_loc(void)
 {
     return NULL;
 }
-#endif
+# endif
 int OPENSSL_NONPIC_relocated = 0;
 #if !defined(OPENSSL_CPUID_SETUP) && !defined(OPENSSL_CPUID_OBJ)
 void OPENSSL_cpuid_setup(void)

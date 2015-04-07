@@ -68,6 +68,7 @@ V3NAMETEST=	v3nametest
 ASN1TEST=	asn1test
 HEARTBEATTEST=  heartbeat_test
 CONSTTIMETEST=  constant_time_test
+CHAPOLYTEST=	chapoly_test
 
 TESTS=		alltests
 
@@ -80,7 +81,8 @@ EXE=	$(BNTEST)$(EXE_EXT) $(ECTEST)$(EXE_EXT)  $(ECDSATEST)$(EXE_EXT) $(ECDHTEST)
 	$(BFTEST)$(EXE_EXT) $(CASTTEST)$(EXE_EXT) $(SSLTEST)$(EXE_EXT) $(EXPTEST)$(EXE_EXT) $(DSATEST)$(EXE_EXT) $(RSATEST)$(EXE_EXT) \
 	$(EVPTEST)$(EXE_EXT) $(EVPEXTRATEST)$(EXE_EXT) $(IGETEST)$(EXE_EXT) $(JPAKETEST)$(EXE_EXT) $(SRPTEST)$(EXE_EXT) \
 	$(ASN1TEST)$(EXE_EXT) $(V3NAMETEST)$(EXE_EXT) $(HEARTBEATTEST)$(EXE_EXT) \
-	$(CONSTTIMETEST)$(EXE_EXT)
+	$(CONSTTIMETEST)$(EXE_EXT) \
+	$(CHAPOLYTEST)$(EXE_EXT)
 
 # $(METHTEST)$(EXE_EXT)
 
@@ -93,7 +95,8 @@ OBJ=	$(BNTEST).o $(ECTEST).o  $(ECDSATEST).o $(ECDHTEST).o $(IDEATEST).o \
 	$(RANDTEST).o $(DHTEST).o $(ENGINETEST).o $(CASTTEST).o \
 	$(BFTEST).o  $(SSLTEST).o  $(DSATEST).o  $(EXPTEST).o $(RSATEST).o \
 	$(EVPTEST).o $(EVPEXTRATEST).o $(IGETEST).o $(JPAKETEST).o $(ASN1TEST).o $(V3NAMETEST).o \
-	$(HEARTBEATTEST).o $(CONSTTIMETEST).o
+	$(HEARTBEATTEST).o $(CONSTTIMETEST).o \
+	$(CHAPOLYTEST).o
 
 SRC=	$(BNTEST).c $(ECTEST).c  $(ECDSATEST).c $(ECDHTEST).c $(IDEATEST).c \
 	$(MD2TEST).c  $(MD4TEST).c $(MD5TEST).c \
@@ -103,7 +106,8 @@ SRC=	$(BNTEST).c $(ECTEST).c  $(ECDSATEST).c $(ECDHTEST).c $(IDEATEST).c \
 	$(RANDTEST).c $(DHTEST).c $(ENGINETEST).c $(CASTTEST).c \
 	$(BFTEST).c  $(SSLTEST).c $(DSATEST).c   $(EXPTEST).c $(RSATEST).c \
 	$(EVPTEST).c $(EVPEXTRATEST).c $(IGETEST).c $(JPAKETEST).c $(SRPTEST).c $(ASN1TEST).c \
-	$(V3NAMETEST).c $(HEARTBEATTEST).c $(CONSTTIMETEST).c
+	$(V3NAMETEST).c $(HEARTBEATTEST).c $(CONSTTIMETEST).c \
+	$(CHAPOLYTEST).c
 
 EXHEADER= 
 HEADER=	testutil.h $(EXHEADER)
@@ -139,6 +143,7 @@ apps:
 	@(cd ..; $(MAKE) DIRS=apps all)
 
 alltests: \
+	test_chapoly \
 	test_des test_idea test_sha test_md4 test_md5 test_hmac \
 	test_md2 test_mdc2 test_wp \
 	test_rmd test_rc2 test_rc4 test_rc5 test_bf test_cast test_aes \
@@ -348,6 +353,9 @@ test_constant_time: $(CONSTTIMETEST)$(EXE_EXT)
 	@echo "Test constant time utilites"
 	../util/shlib_wrap.sh ./$(CONSTTIMETEST)
 
+test_chapoly: $(CHAPOLYTEST)$(EXE_EXT)
+	@echo "Test ChaCha20 and Poly1305"
+	../util/shlib_wrap.sh ./$(CHAPOLYTEST)
 lint:
 	lint -DLINT $(INCLUDES) $(SRC)>fluff
 
@@ -516,7 +524,10 @@ $(HEARTBEATTEST)$(EXE_EXT): $(HEARTBEATTEST).o $(DLIBCRYPTO)
 	@target=$(HEARTBEATTEST); $(BUILD_CMD_STATIC)
 
 $(CONSTTIMETEST)$(EXE_EXT): $(CONSTTIMETEST).o
-	@target=$(CONSTTIMETEST) $(BUILD_CMD)
+	@target=$(CONSTTIMETEST); $(BUILD_CMD)
+
+$(CHAPOLYTEST)$(EXE_EXT): $(CHAPOLYTEST).o
+	@target=$(CHAPOLYTEST); $(BUILD_CMD)
 
 #$(AESTEST).o: $(AESTEST).c
 #	$(CC) -c $(CFLAGS) -DINTERMEDIATE_VALUE_KAT -DTRACE_KAT_MCT $(AESTEST).c
@@ -826,3 +837,4 @@ wp_test.o: ../include/openssl/opensslconf.h ../include/openssl/opensslv.h
 wp_test.o: ../include/openssl/ossl_typ.h ../include/openssl/safestack.h
 wp_test.o: ../include/openssl/stack.h ../include/openssl/symhacks.h
 wp_test.o: ../include/openssl/whrlpool.h wp_test.c
+chapoly_test.o: ../include/openssl/chacha20poly1305.h chapoly_test.c

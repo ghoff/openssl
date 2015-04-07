@@ -2891,6 +2891,53 @@ OPENSSL_GLOBAL SSL_CIPHER ssl3_ciphers[] = {
      256},
 #endif
 
+#if !defined(OPENSSL_NO_CHACHA_POLY)
+	{
+	1,
+	TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+	TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305,
+	SSL_kEECDH,
+	SSL_aRSA,
+	SSL_CHACHA20POLY1305,
+	SSL_AEAD,
+	SSL_TLSV1_2,
+	SSL_NOT_EXP|SSL_HIGH,
+	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256,
+	256,
+	0,
+	},
+
+	{
+	1,
+	TLS1_TXT_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+	TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305,
+	SSL_kEECDH,
+	SSL_aECDSA,
+	SSL_CHACHA20POLY1305,
+	SSL_AEAD,
+	SSL_TLSV1_2,
+	SSL_NOT_EXP|SSL_HIGH,
+	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256,
+	256,
+	0,
+	},
+
+	{
+	1,
+	TLS1_TXT_DHE_RSA_WITH_CHACHA20_POLY1305,
+	TLS1_CK_DHE_RSA_CHACHA20_POLY1305,
+	SSL_kEDH,
+	SSL_aRSA,
+	SSL_CHACHA20POLY1305,
+	SSL_AEAD,
+	SSL_TLSV1_2,
+	SSL_NOT_EXP|SSL_HIGH,
+	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256,
+	256,
+	0,
+	},
+#endif
+
 /* end of list */
 };
 
@@ -4047,6 +4094,7 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
     int i, ii, ok;
     CERT *cert;
     unsigned long alg_k, alg_a, mask_k, mask_a, emask_k, emask_a;
+    int use_chacha = 0;
 
     /* Let's see which ciphers we can support */
     cert = s->cert;
@@ -4080,9 +4128,16 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
     if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE || tls1_suiteb(s)) {
         prio = srvr;
         allow = clnt;
+        /* Use ChaCha20+Poly1305 iff it's client's most preferred cipher suite */
+        if (sk_SSL_CIPHER_num(clnt) > 0) {
+            c = sk_SSL_CIPHER_value(clnt, 0);
+            if (c->algorithm_enc == SSL_CHACHA20POLY1305)
+                use_chacha = 1;
+        }
     } else {
         prio = clnt;
         allow = srvr;
+        use_chacha = 1;
     }
 
     tls1_set_cert_validity(s);
@@ -4093,12 +4148,17 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
         /* Skip TLS v1.2 only ciphersuites if not supported */
         if ((c->algorithm_ssl & SSL_TLSV1_2) && !SSL_USE_TLS1_2_CIPHERS(s))
             continue;
+        /* Skip ChaCha unless top client priority */
+        if ((c->algorithm_enc == SSL_CHACHA20POLY1305) &&
+            !use_chacha)
+            continue;
 
         ssl_set_cert_masks(cert, c);
         mask_k = cert->mask_k;
         mask_a = cert->mask_a;
         emask_k = cert->export_mask_k;
         emask_a = cert->export_mask_a;
+
 #ifndef OPENSSL_NO_SRP
         if (s->srp_ctx.srp_Mask & SSL_kSRP) {
             mask_k |= SSL_kSRP;
