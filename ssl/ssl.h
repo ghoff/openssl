@@ -842,6 +842,14 @@ void SSL_set_msg_callback(SSL *ssl,
 # define SSL_CTX_set_msg_callback_arg(ctx, arg) SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 # define SSL_set_msg_callback_arg(ssl, arg) SSL_ctrl((ssl), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 
+/* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
+ * log session material to |keylog_bio|. This is intended for debugging use with
+ * tools like Wireshark. |ctx| takes ownership of |keylog_bio|.
+ *
+ * The format is described in
+ * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
+OPENSSL_EXPORT void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
+
 # ifndef OPENSSL_NO_SRP
 
 #  ifndef OPENSSL_NO_SSL_INTERN
@@ -2817,6 +2825,7 @@ void ERR_load_SSL_strings(void);
 # define SSL_F_SSL_VERIFY_CERT_CHAIN                      207
 # define SSL_F_SSL_WRITE                                  208
 # define SSL_F_TLS12_CHECK_PEER_SIGALG                    333
+# define SSL_F_ssl_ctx_log_rsa_client_key_exchange        285
 # define SSL_F_TLS1_CERT_VERIFY_MAC                       286
 # define SSL_F_TLS1_CHANGE_CIPHER_STATE                   209
 # define SSL_F_TLS1_CHECK_SERVERHELLO_TLSEXT              274
