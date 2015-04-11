@@ -1189,6 +1189,10 @@ struct ssl_ctx_st {
     unsigned char *tlsext_ellipticcurvelist;
 #   endif                       /* OPENSSL_NO_EC */
 #  endif
+    /* If not NULL, session key material will be logged to this BIO for
+     * debugging purposes. The format matches NSS's and is readable by
+     * Wireshark. */
+    BIO *keylog_bio;
 };
 
 # endif
