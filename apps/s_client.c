@@ -740,6 +740,8 @@ int MAIN(int argc, char **argv)
     int crl_download = 0;
     STACK_OF(X509_CRL) *crls = NULL;
 
+    char *sslkeylogfile = NULL;
+
     meth = SSLv23_client_method();
 
     apps_startup();
@@ -1118,6 +1120,10 @@ int MAIN(int argc, char **argv)
             keymatexportlen = atoi(*(++argv));
             if (keymatexportlen == 0)
                 goto bad;
+	} else if (strcmp(*argv, "-keylogfile") == 0) {
+	    if (--argc < 1)
+	        goto bad;
+	    sslkeylogfile = *(++argv); 
         } else {
             BIO_printf(bio_err, "unknown option %s\n", *argv);
             badop = 1;
@@ -1253,6 +1259,13 @@ int MAIN(int argc, char **argv)
     if (ctx == NULL) {
         ERR_print_errors(bio_err);
         goto end;
+    }
+
+    if (sslkeylogfile) {
+        BIO *keylog_bio = BIO_new_file(sslkeylogfile, "a");
+	if (keylog_bio) {
+	    SSL_CTX_set_keylog_bio(ctx, keylog_bio);
+	}
     }
 
     if (vpm)
