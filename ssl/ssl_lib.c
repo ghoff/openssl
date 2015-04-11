@@ -3496,21 +3496,14 @@ void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio) {
   ctx->keylog_bio = keylog_bio;
 }
 
-static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
-  static const char hextable[] = "0123456789abcdef";
-  uint8_t *out;
-  size_t i;
+void data_add_hex(uint8_t *data, const uint8_t *in, size_t in_len) {
+    static const char hextable[] = "0123456789abcdef";
+    size_t i;
 
-  if (!CBB_add_space(cbb, &out, in_len * 2)) {
-    return 0;
-  }
-
-  for (i = 0; i < in_len; i++) {
-    *(out++) = (uint8_t)hextable[in[i] >> 4];
-    *(out++) = (uint8_t)hextable[in[i] & 0xf];
-  }
-
-  return 1;
+    for (i = 0; i < in_len; i++) {
+        *(data++) = (uint8_t)hextable[in[i] >> 4];
+        *(data++) = (uint8_t)hextable[in[i] & 0xf];
+    }
 }
 
 int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
@@ -3519,8 +3512,7 @@ int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
                                         const uint8_t *premaster,
                                         size_t premaster_len) {
   BIO *bio = ctx->keylog_bio;
-  CBB cbb;
-  uint8_t *out;
+  uint8_t *out, *p;
   size_t out_len;
   int ret;
 
@@ -3529,26 +3521,32 @@ int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
   }
 
   if (encrypted_premaster_len < 8) {
-    OPENSSL_PUT_ERROR(SSL, ssl_ctx_log_rsa_client_key_exchange,
-                      ERR_R_INTERNAL_ERROR);
+/*    OPENSSL_PUT_ERROR(SSL, ssl_ctx_log_rsa_client_key_exchange,
+                      ERR_R_INTERNAL_ERROR);*/
     return 0;
   }
 
-  if (!CBB_init(&cbb, 4 + 16 + 1 + premaster_len * 2 + 1)) {
+  out_len = 4 + 16 + 1 + premaster_len * 2 + 1;
+  if (!(out = (uint8_t *)OPENSSL_malloc(out_len))) {
     return 0;
   }
+  p = out;
+  memcpy(p, "RSA ", 4); p += 4;
+  data_add_hex(p, encrypted_premaster, 8); p += 16;
+  memcpy(p, " ", 1); p += 1;
+  data_add_hex(p, premaster, premaster_len); p += (premaster_len*2);
+  memcpy(p, "\n", 1);
 
-  if (!CBB_add_bytes(&cbb, (const uint8_t *)"RSA ", 4) ||
-      /* Only the first 8 bytes of the encrypted premaster secret are
-       * logged. */
+  /*
+      !CBB_add_bytes(&cbb, (const uint8_t *)"RSA ", 4) ||
+       * Only the first 8 bytes of the encrypted premaster secret are
+       * logged. *
       !cbb_add_hex(&cbb, encrypted_premaster, 8) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
       !cbb_add_hex(&cbb, premaster, premaster_len) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)"\n", 1) ||
       !CBB_finish(&cbb, &out, &out_len)) {
-    CBB_cleanup(&cbb);
-    return 0;
-  }
+  */
 
   CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
   ret = BIO_write(bio, out, out_len) >= 0 && BIO_flush(bio);
@@ -3562,8 +3560,7 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
                               size_t client_random_len, const uint8_t *master,
                               size_t master_len) {
   BIO *bio = ctx->keylog_bio;
-  CBB cbb;
-  uint8_t *out;
+  uint8_t *out, *p;
   size_t out_len;
   int ret;
 
@@ -3572,23 +3569,30 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
   }
 
   if (client_random_len != 32) {
-    OPENSSL_PUT_ERROR(SSL, ssl_ctx_log_master_secret, ERR_R_INTERNAL_ERROR);
+    //OPENSSL_PUT_ERROR(SSL, ssl_ctx_log_master_secret, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  if (!CBB_init(&cbb, 14 + 64 + 1 + master_len * 2 + 1)) {
+  out_len = 14 + 64 + 1 + master_len * 2 + 1;
+  if (!(out = (uint8_t *)OPENSSL_malloc(out_len))) {
     return 0;
   }
 
-  if (!CBB_add_bytes(&cbb, (const uint8_t *)"CLIENT_RANDOM ", 14) ||
+  p = out;
+  memcpy(p, "CLIENT_RANDOM ", 14); p += 14;
+  data_add_hex(p, client_random, 32); p += 64;
+  memcpy(p, " ", 1); p++;
+  data_add_hex(p, master, master_len); p += (master_len*2);
+  memcpy(p, "\n", 1);
+
+  /*
+      !CBB_add_bytes(&cbb, (const uint8_t *)"CLIENT_RANDOM ", 14) ||
       !cbb_add_hex(&cbb, client_random, 32) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
       !cbb_add_hex(&cbb, master, master_len) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)"\n", 1) ||
-      !CBB_finish(&cbb, &out, &out_len)) {
-    CBB_cleanup(&cbb);
-    return 0;
-  }
+      !CBB_finish(&cbb, &out, &out_len))
+   */
 
   CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
   ret = BIO_write(bio, out, out_len) >= 0 && BIO_flush(bio);
