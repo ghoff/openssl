@@ -1120,10 +1120,6 @@ int MAIN(int argc, char **argv)
             keymatexportlen = atoi(*(++argv));
             if (keymatexportlen == 0)
                 goto bad;
-	} else if (strcmp(*argv, "-keylogfile") == 0) {
-	    if (--argc < 1)
-	        goto bad;
-	    sslkeylogfile = *(++argv); 
         } else {
             BIO_printf(bio_err, "unknown option %s\n", *argv);
             badop = 1;
@@ -1261,6 +1257,7 @@ int MAIN(int argc, char **argv)
         goto end;
     }
 
+    sslkeylogfile = getenv("SSLKEYLOGFILE");
     if (sslkeylogfile) {
         BIO *keylog_bio = BIO_new_file(sslkeylogfile, "a");
 	if (keylog_bio) {
